@@ -170,11 +170,14 @@ Push a new commit to main, or
 Go to Actions → CI (Maven + Docker → GHCR) → Run workflow (manual dispatch)
 
 7) Summary
+![](ci-cd1.jpg)
+![](ci-cd2.jpg)
 
 ✅ GitHub Actions builds JAR via Maven Wrapper
 
 ✅ Docker image is built and pushed to GHCR automatically
 
-
+![](ci-cd3.jpg)
 ✅ Tag latest (and per-commit SHA) always available for Kubernetes or local testing
+
 
