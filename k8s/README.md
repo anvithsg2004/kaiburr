@@ -2,7 +2,6 @@ README: Kubernetes Cluster State and API Interaction
 
 This document explains the series of commands shown in the screenshot, which detail how to inspect a Kubernetes cluster and interact with a custom task management application running within it.
 
-<p align="center"><img src="kub1.jpg" alt="Kubernetes Cluster State and API Interaction"></p>
 
 Command-by-Command Explanation
 
@@ -64,4 +63,10 @@ Output Analysis: The output shows two tasks:
 
 One with id: 123, which was likely created previously.
 
+![Commands](kub1.jpg)
+![](kub2.jpg)
+![](kub3.jpg)
+![](kub4.jpg)ge_filename.jpg)
+![](kub5.jpg)
 The new task with id: t-001 that was just created, confirming the PUT request was successful.
+
