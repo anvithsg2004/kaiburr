@@ -2,8 +2,6 @@ CI–CD: Build Java app with Maven and publish Docker image to GHCR
 
 This pipeline runs on every push to main (and on PRs), builds the Spring Boot JAR with Maven Wrapper, then builds and pushes a Docker image to GitHub Container Registry (GHCR).
 
-Repo: github.com/anvithsg2004/kaiburr
-Image: ghcr.io/anvithsg2004/kaiburr:latest
 
 What I used
 
@@ -125,11 +123,7 @@ Docker Buildx builds the image using your Dockerfile
 
 Login to ghcr.io happens using GITHUB_TOKEN
 
-Image is pushed with tags:
-
-ghcr.io/anvithsg2004/kaiburr:latest
-
-ghcr.io/anvithsg2004/kaiburr:sha-<commit-sha>
+Image is pushed with tags
 
 ✅ You saw a green run and a Docker Build summary artifact.
 
@@ -183,3 +177,4 @@ Go to Actions → CI (Maven + Docker → GHCR) → Run workflow (manual dispatch
 
 
 ✅ Tag latest (and per-commit SHA) always available for Kubernetes or local testing
+
