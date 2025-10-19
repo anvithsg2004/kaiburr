@@ -8,7 +8,6 @@ A minimal REST API to store and execute “tasks”.
 
 ## ✅ What I built
 
-**Entity**
 /PUT Task
 {
   "id": "task1",
@@ -76,11 +75,11 @@ GET /tasks/search?q=list
   {
     "id": "task1",
     "name": "List files in directory",
-    "owner": "anvith",
+    "owner": "abhinay",
     "command": "ls -l",
     "taskExecutions": []
   }
-]
+
 
 6) Execute the task
 
@@ -101,6 +100,7 @@ The execution is also appended to taskExecutions for that task.
 7) Delete a task
 
 DELETE /tasks/task1
+
 
 ![Upsert Task](docs/img/backend_put.png)
 ![Get by ID](docs/img/backend_get_id.png)
