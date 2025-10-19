@@ -36,6 +36,8 @@ The API echoes the created or updated task object.
 }
 
 
+<p align="center"></p>
+
 2. Get Task by ID
 
 Retrieves a specific task using its unique ID.
@@ -58,6 +60,8 @@ Returns the task object matching the ID.
   "taskExecutions": []
 }
 
+
+<p align="center"></p>
 
 3. Search Tasks by Name
 
@@ -84,6 +88,8 @@ Returns an array of task objects that match the search criteria.
 ]
 
 
+<p align="center"></p>
+
 4. Free-Text Search
 
 Performs a free-text search across task fields.
@@ -109,6 +115,8 @@ Returns an array of task objects that match the search query.
 ]
 
 
+<p align="center"></p>
+
 5. Execute a Task
 
 Triggers the execution of the command associated with a specific task ID.
@@ -130,6 +138,8 @@ The immediate response contains the startTime, endTime, and the output of the co
 }
 
 
+<p align="center"></p>
+
 6. Delete a Task
 
 Deletes a task by its ID.
@@ -143,6 +153,8 @@ Example: /tasks/task1
 Success Response:
 
 A successful deletion will typically return a 204 No Content or 200 OK with a confirmation message.
+
+<p align="center"></p>
 
 Where to Find Execution Outputs
 
@@ -167,3 +179,6 @@ Example: After execution, fetching task1 would look like this:
     }
   ]
 }
+
+
+<p align="center"></p>
