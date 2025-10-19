@@ -1,203 +1,67 @@
-How to run with Docker (optional)
-# build image
-docker build -t taskrun:1.0.0 .
+README: Kubernetes Cluster State and API Interaction
 
-# run with local Mongo
-docker run --rm -p 8080:8080 \
-  -e SPRING_DATA_MONGODB_URI=mongodb://host.docker.internal:27017/taskrun \
-  taskrun:1.0.0
+This document explains the series of commands shown in the screenshot, which detail how to inspect a Kubernetes cluster and interact with a custom task management application running within it.
 
-Kubernetes – Deploy the Task Runner API
+<p align="center"><img src="kub1.jpg" alt="Kubernetes Cluster State and API Interaction"></p>
 
-This deploys the Spring Boot app and MongoDB on a local Kubernetes cluster (Docker Desktop).
-The app exposes a NodePort so I can call the REST API from my laptop.
+Command-by-Command Explanation
 
-What I used
+kubectl config current-context
 
-Docker Desktop with Kubernetes enabled (docker-desktop context)
+Purpose: This command displays the name of the Kubernetes context you are currently connected to. In this case, the context is docker-desktop, indicating the user is interacting with a local Kubernetes cluster provided by Docker Desktop.
 
-kubectl
-
-Container image:
-
-first I used a local image taskrun:1.0.0
-
-then I switched to GHCR image ghcr.io/anvithsg2004/kaiburr:latest (built by GitHub Actions)
-
-Kubernetes manifests (in k8s/)
-
-00-namespace.yaml → creates namespace taskrun
-
-10-rbac.yaml → ServiceAccount taskrun-sa, a Role (can create pods, read logs), and a RoleBinding
-
-20-mongo.yaml → PersistentVolumeClaim + Deployment + Service for MongoDB
-
-30-app.yaml → Deployment + Service (NodePort 30080) for the Spring Boot app
-
-Important env for the app:
-
-env:
-  - name: SPRING_DATA_MONGODB_URI
-    value: mongodb://mongodb:27017/taskrun
-  - name: POD_NAMESPACE
-    valueFrom:
-      fieldRef:
-        fieldPath: metadata.namespace
-
-
-The app uses POD_NAMESPACE to create short-lived busybox runner pods when executing a task command.
-
-How I deployed
-
-Make sure your context is Docker Desktop:
-
-kubectl config use-context docker-desktop
 kubectl get nodes
 
+Purpose: This retrieves a list of all nodes in the cluster.
 
-Apply everything:
+Output Analysis: It shows a single node named docker-desktop, which has the control-plane role and is in the Ready status. This confirms the cluster is operational.
 
-kubectl apply -f k8s/00-namespace.yaml
-kubectl apply -f k8s/10-rbac.yaml
-kubectl apply -f k8s/20-mongo.yaml
-kubectl -n taskrun wait --for=condition=available deploy/mongodb --timeout=120s
-
-# If using the GHCR image (what I used finally):
-kubectl apply -f k8s/30-app.yaml
-
-# Watch rollout
-kubectl -n taskrun rollout status deploy/taskrun
 kubectl -n taskrun get pods -o wide
+
+Purpose: This command lists the pods within the taskrun namespace and provides extended information (-o wide).
+
+Output Analysis:
+
+mongodb-5cc...: A MongoDB database pod, running and ready (1/1). It has an internal IP address of 10.1.0.140.
+
+taskrun-svc...: The application pod, also running and ready.
+
 kubectl -n taskrun get svc
 
+Purpose: This lists the Kubernetes services in the taskrun namespace. Services provide stable network endpoints for pods.
 
-✅ Expected state:
+Output Analysis:
 
-NAMESPACE   NAME                       READY   STATUS    RESTARTS   AGE   IP           NODE
-taskrun     mongodb-xxxxx              1/1     Running   0          ...   10.1.0.140   docker-desktop
-taskrun     taskrun-xxxxx              1/1     Running   0          ...   10.1.0.145   docker-desktop
+mongodb: A ClusterIP service, exposing the MongoDB pod internally on port 27017.
 
+taskrun-svc: A NodePort service, which exposes the application on port 8080 internally and makes it accessible from outside the cluster on port 30888.
 
-Service:
+kubectl -n taskrun exec deploy/taskrun-svc -- printenv | findstr SPRING_DATA_MONGODB_URI
 
-NAME          TYPE      CLUSTER-IP      PORT(S)          NODE-PORT
-taskrun-svc   NodePort  10.99.198.86    8080:30080/TCP   30080
+Purpose: This is a diagnostic command to inspect the environment variables of the running application pod.
 
-How I tested the API (from my laptop)
+exec deploy/taskrun-svc: Executes a command inside the container of the taskrun-svc deployment.
 
-Base URL:
-
-$BASE = 'http://localhost:30080'
-
-1) Create a task
-$task = [pscustomobject]@{
-  id = "123"
-  name = "Print Hello"
-  owner = "John Smith"
-  command = "echo Hello from K8s!"
-  taskExecutions = @()
-}
-$taskJson = $task | ConvertTo-Json -Depth 5
-
-Invoke-RestMethod -Method Put -Uri "$BASE/tasks" -ContentType "application/json" -Body $taskJson
-
-
-Output (200 OK):
-
-{
-  "id": "123",
-  "name": "Print Hello",
-  "owner": "John Smith",
-  "command": "echo Hello from K8s!",
-  "taskExecutions": {}
-}
-
-2) Execute the task (this spawns a short-lived busybox pod)
-Invoke-RestMethod -Method Put -Uri "$BASE/tasks/123/execute"
-
-
-Output example:
-
-{
-  "startTime": "2025-10-19T06:38:34.354Z",
-  "endTime": "2025-10-19T06:38:44.564Z",
-  "output": "Hello from K8s!..."
-}
-
-
-Kubernetes events showed runner pods like taskrun-exec-xxxxx being Scheduled / Started and then disappearing.
-
-3) Get by id
-Invoke-RestMethod -Method Get -Uri "$BASE/tasks?id=123"
-
-
-Output shows the execution recorded:
-
-{
-  "id": "123",
-  "name": "Print Hello",
-  "owner": "John Smith",
-  "command": "echo Hello from K8s!",
-  "taskExecutions": [
-    {
-      "startTime": "...",
-      "endTime": "...",
-      "output": "Hello from K8s! [executedIn=k8sPod]"
-    }
-  ]
-}
-
-4) Filter by name
-Invoke-RestMethod -Method Get -Uri "$BASE/tasks?name=Print"
-
-5) Search endpoint
-Invoke-RestMethod -Method Get -Uri "$BASE/tasks/search?q=Print"
-
-
-Note: q is required for /tasks/search. Without it, the app returns 400 Bad Request.
-
-6) Delete a task
-Invoke-RestMethod -Method Delete -Uri "$BASE/tasks/123"
-
-Data persistence check (PVC)
-
-I deleted the MongoDB pod and waited for it to restart:
-
-kubectl -n taskrun delete pod -l app=mongodb
-kubectl -n taskrun wait --for=condition=ready pod -l app=mongodb --timeout=120s
-
-
-Because the pod uses a PersistentVolumeClaim, data stayed intact.
-
-What broke & how I fixed it
-
-CrashLoopBackOff at first run: Spring failed with
-“No qualifying bean of type io.fabric8.kubernetes.client.KubernetesClient”.
-
-Fix: I added K8sConfig.java (Spring @Configuration) to create the Fabric8 client (in-cluster or from kubeconfig). Rebuilt the image and redeployed.
-
-Env var merge conflict when switching from a manual POD_NAMESPACE=value to the Downward API:
-
-Error: valueFrom may not be specified when value is not empty
-
-Fix: removed the old env on the live Deployment:
-
-kubectl -n taskrun set env deploy/taskrun POD_NAMESPACE-
-kubectl -n taskrun apply -f k8s/30-app.yaml
-
-
-RBAC: Verified the service account can create pods and read logs:
+printenv | findstr ...: It prints all environment variables and then filters (findstr) for the line containing the MongoDB connection string (SPRING_DATA_MONGODB_URI), confirming the application is correctly configured to connect to the database.
 
 kubectl -n taskrun auth can-i create pods --as system:serviceaccount:taskrun:taskrun-sa
-kubectl -n taskrun auth can-i get pods/log --as system:serviceaccount:taskrun:taskrun-sa
 
-Switching the image
+Purpose: This is a Role-Based Access Control (RBAC) check. It verifies if the service account taskrun-sa has permission to create pods in the taskrun namespace.
 
-Local dev image: set image: taskrun:1.0.0 (works on Docker Desktop because the node can see local images).
+Output Analysis: The yes output confirms the service account is correctly permissioned, which is crucial for the application to execute tasks that might involve creating new pods.
 
-CI image from GHCR (what I used finally):
-image: ghcr.io/anvithsg2004/kaiburr:latest
-Make sure the package is public (or create an imagePullSecret).
+Invoke-RestMethod -Method Put -Uri "$BASE/tasks" ...
 
-Cleanup
-kubectl delete ns taskrun
+Purpose: This PowerShell command sends an HTTP PUT request to the application's API endpoint to create a new task with id "t-001".
+
+Functionality: It demonstrates creating a resource (a task) via the application's REST API.
+
+Invoke-RestMethod -Method Get -Uri "$BASE/tasks"
+
+Purpose: This sends an HTTP GET request to retrieve all tasks from the application.
+
+Output Analysis: The output shows two tasks:
+
+One with id: 123, which was likely created previously.
+
+The new task with id: t-001 that was just created, confirming the PUT request was successful.
