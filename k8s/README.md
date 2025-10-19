@@ -66,7 +66,8 @@ One with id: 123, which was likely created previously.
 ![Commands](kub1.jpg)
 ![](kub2.jpg)
 ![](kub3.jpg)
-![](kub4.jpg)ge_filename.jpg)
+![](kub4.jpg)
 ![](kub5.jpg)
 The new task with id: t-001 that was just created, confirming the PUT request was successful.
+
 
