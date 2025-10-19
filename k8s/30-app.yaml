@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskrun
+  namespace: taskrun
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: taskrun
+  template:
+    metadata:
+      labels:
+        app: taskrun
+    spec:
+      serviceAccountName: taskrun-sa
+      containers:
+        - name: taskrun
+          image: taskrun:1.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SPRING_DATA_MONGODB_URI
+              value: mongodb://mongodb:27017/taskrun
+            - name: POD_NAMESPACE                # <-- add this
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - containerPort: 8080
+          # you can keep your httpGet probes, but these tcpSocket probes avoid false negatives at boot:
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskrun-svc
+  namespace: taskrun
+spec:
+  type: NodePort
+  selector:
+    app: taskrun
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080
